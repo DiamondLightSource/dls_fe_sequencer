@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier
+_commit: 5.0.2
+_src_path: https://github.com/DiamondLightSource/python-copier-template.git
+author_email: lee.hudson@diamond.ac.uk
+author_name: Lee Hudson
+component_lifecycle: production
+component_owner: ''
+component_type: library
+description: A module to automate the control of Diamond Front Ends
+distribution_name: dls-fe-sequencer
+docker: false
+docs_type: README
+git_platform: github.com
+github_org: DiamondLightSource
+package_name: dls_fe_sequencer
+pypi: true
+repo_name: dls-fe-sequencer
+strict_typing: false
+type_checker: pyright

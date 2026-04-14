@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: dls-fe-sequencer
+  title: dls-fe-sequencer
+  description: A module to automate the control of Diamond Front Ends
+spec:
+  type: library
+  lifecycle: production
+  owner: 
