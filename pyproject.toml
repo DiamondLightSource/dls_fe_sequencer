@@ -77,18 +77,18 @@ env_list = ["pre-commit", "type-checking", "tests"]
 # Pass all environment variables to the test environments
 passenv = ["*"]
 
-# [tool.tox.env.pre-commit]
-# description = "Run pre-commit on all files"
-# commands = [
-#     [
-#         "pre-commit",
-#         "run",
-#         "--all-files",
-#         "--show-diff-on-failure",
-#         { replace = "posargs", default = [
-#         ], extend = true },
-#     ],
-# ]
+[tool.tox.env.pre-commit]
+description = "Run pre-commit on all files"
+commands = [
+    [
+        "pre-commit",
+        "run",
+        "--all-files",
+        "--show-diff-on-failure",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
 
 [tool.tox.env.type-checking]
 description = "Run pyright"
