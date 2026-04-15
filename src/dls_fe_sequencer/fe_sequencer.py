@@ -1,16 +1,15 @@
 # The purpose of __all__ is to define the public API of this module, and which
 # objects are imported if we call "from dls_feSequencer.hello import *"
+from __future__ import annotations
+
 import enum
 import logging
 import types
 from time import sleep
-from typing import List
 
 import cothread
-import epicscorelibs.path.cothread
 from cothread.catools import caget, camonitor, caput
 from softioc import builder
-
 
 __all__ = [
     "Action",
@@ -76,26 +75,21 @@ class Condition:
         msg: str = "",
         component_key: str = "",
         pv_suffix: str = "",
-        value: List = list(),
+        value: list[str] | None = None,
         pre_delay=0,
         post_delay=0,
     ):
         self.msg = msg
         self.component_key = component_key
         self.pv_suffix = pv_suffix
-        self.value = value
+        self.value: list[str] = value if value is not None else []
         self.pre_delay = pre_delay
         self.post_delay = post_delay
 
-        if len(value) != 0:
+        if len(self.value) != 0:
             self.has_value = True
         else:
             self.has_value = False
-
-
-# Class prototype
-class FESequencer:
-    pass
 
 
 class Status:
@@ -115,14 +109,16 @@ class Status:
         # Create PVs for sequencer EPICS interface
         builder.SetDeviceName(f"{front_end}-CS-SEQ-01")
 
-        self.versionPV = builder.stringOut(
-            "VERSION", DESC="Git version", initial_value=dls_feSequencer.__version__
-        )
+        # self.versionPV = builder.stringOut(
+        #     "VERSION", DESC="Git version", initial_value=dls_fe_sequencer.__version__
+        # )
         self.step_numberPV = builder.aOut(
             "STEP", DESC="Current step number", initial_value=0
         )
         self.sequence_pv = builder.stringOut(
-            "SEQUENCE", DESC="Name of running sequence", initial_value=Sequences.Idle.name
+            "SEQUENCE",
+            DESC="Name of running sequence",
+            initial_value=Sequences.Idle.name,
         )
         self.action_pv = builder.stringOut(
             "ACTION_PV", DESC="Sequencer target PV name", initial_value="None"
@@ -140,10 +136,14 @@ class Status:
             "CONDITION_VAL", DESC="Desired value for readback", initial_value="None"
         )
         self.condition_act_val_pv = builder.stringOut(
-            "CONDITION_ACT_VAL", DESC="Actual value of readback PV", initial_value="None"
+            "CONDITION_ACT_VAL",
+            DESC="Actual value of readback PV",
+            initial_value="None",
         )
         self.condition_msg = builder.stringOut(
-            "CONDITION_MSG", DESC="Condition before seq progression", initial_value="None"
+            "CONDITION_MSG",
+            DESC="Condition before seq progression",
+            initial_value="None",
         )
 
         cothread.Spawn(self.__update_pvs)
@@ -178,11 +178,9 @@ class Status:
                 self.condition_act_val_pv.set("None")
                 self.condition_msg.set("None")
             else:
-
                 # Update step related PVs only if self.condition and self.action have
                 # been initialised
                 if type(self.condition) == Condition and type(self.action) == Action:
-
                     # Check action has been initialised with valid component_key
                     if self.action.component_key in self.sequencer.fe_components.keys():
                         self.action_pv.set(
@@ -193,7 +191,10 @@ class Status:
                         self.action_val_pv.set(self.action.value)
                         self.action_msg.set(self.action.msg)
 
-                    if self.condition.component_key in self.sequencer.fe_components.keys():
+                    if (
+                        self.condition.component_key
+                        in self.sequencer.fe_components.keys()
+                    ):
                         self.condition_pv.set(
                             self.sequencer.fe_components[self.condition.component_key]
                             + ":"
@@ -218,7 +219,9 @@ class Status:
                     condition_pv_name = self.condition_pv.get()
                     if len(condition_pv_name) > 10:
                         try:
-                            condition_actual = self.caget(condition_pv_name, datatype=str)
+                            condition_actual = self.caget(
+                                condition_pv_name, datatype=str
+                            )
                             self.condition_act_val_pv.set(condition_actual)
                         except Exception as e:
                             logging.error(f"\033[1;31m {e} \033[0;0m")
@@ -344,7 +347,9 @@ class FESequencer:
         self.close_sequence_actions = actions
         self.close_sequence_conditions = conditions
 
-    def configure_open_sequence(self, actions: List[Action], conditions: List[Condition]):
+    def configure_open_sequence(
+        self, actions: List[Action], conditions: List[Condition]
+    ):
         """Method to describe the seqence of actions and conditions for the opening sequence
 
         Args:
@@ -385,34 +390,41 @@ class FESequencer:
         """
 
         if self.status.sequence == Sequences.Idle:
-            current_beam_sta = self.caget(f'{self.fe_components["BEAM"]}:STA', datatype=str)
+            current_beam_sta = self.caget(
+                f"{self.fe_components['BEAM']}:STA", datatype=str
+            )
             current_beam_con = self.caget(
-                f'{self.fe_components["BEAM"]}:BLCON', datatype=str
+                f"{self.fe_components['BEAM']}:BLCON", datatype=str
             )
             new_beam_sta = current_beam_sta
-            absb = self.caget(f'{self.fe_components["ABSB"]}:STA', datatype=str)
+            absb = self.caget(f"{self.fe_components['ABSB']}:STA", datatype=str)
             absb1 = absb
-            pshtr = self.caget(f'{self.fe_components["PSHTR"]}:STA', datatype=str)
-            shtr = self.caget(f'{self.fe_components["SHTR"]}:STA', datatype=str)
+            pshtr = self.caget(f"{self.fe_components['PSHTR']}:STA", datatype=str)
+            shtr = self.caget(f"{self.fe_components['SHTR']}:STA", datatype=str)
 
             if self.no_of_absorbers == 2:
-                absb1 = self.caget(f'{self.fe_components["ABSB1"]}:STA', datatype=str)
+                absb1 = self.caget(f"{self.fe_components['ABSB1']}:STA", datatype=str)
 
-            if absb == "Open" and absb1 == "Open" and pshtr == "Open" and shtr == "Open":
+            if (
+                absb == "Open"
+                and absb1 == "Open"
+                and pshtr == "Open"
+                and shtr == "Open"
+            ):
                 new_beam_sta = "Open"
 
             if pshtr == "Closed" or shtr == "Closed":
                 new_beam_sta = "Closed"
 
             if current_beam_sta != new_beam_sta:
-                self.caput(f'{self.fe_components["BEAM"]}:STA', new_beam_sta)
+                self.caput(f"{self.fe_components['BEAM']}:STA", new_beam_sta)
                 current_beam_sta = new_beam_sta
 
             # If BLCON no longer matches BEAM:STA then set BLCON to "Unknown"
             # This ensures that when the beamline request a sequence that the BLCON
             # record will process.
             if current_beam_con != current_beam_sta:
-                self.caput(f'{self.fe_components["BEAM"]}:BLCON', "Unknown")
+                self.caput(f"{self.fe_components['BEAM']}:BLCON", "Unknown")
 
     def __request_sequence_start(self, command):
         """Method that sets the current sequence to a specified value to start a sequence
@@ -444,7 +456,9 @@ class FESequencer:
         """Calls self.__run_sequence when a sequence is requested"""
         while 1:
             if self.status.sequence == Sequences.Open:
-                self.__run_sequence(self.open_sequence_actions, self.open_sequence_conditions)
+                self.__run_sequence(
+                    self.open_sequence_actions, self.open_sequence_conditions
+                )
 
             if self.status.sequence == Sequences.Close:
                 self.__run_sequence(
