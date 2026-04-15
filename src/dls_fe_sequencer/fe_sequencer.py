@@ -11,7 +11,6 @@ import epicscorelibs.path.cothread
 from cothread.catools import caget, camonitor, caput
 from softioc import builder
 
-import dls_feSequencer._version_git
 
 __all__ = [
     "Action",
@@ -34,9 +33,9 @@ class Action:
     Args:
         msg(str): Message to be printed to the console to describe the action to be
             performed
-        componentKey(str): One of the following strings to allow instance of feComponent
+        component_key(str): One of the following strings to allow instance of feComponent
             to be located:['ABSB','FV','SHTR','V2']
-        pvSuffix(str): One of the following strings used to determine the exact
+        pv_suffix(str): One of the following strings used to determine the exact
         PV: ['CON','STA','ILKSTA']
         value(str): Value to be written to the PV
     """
@@ -44,18 +43,18 @@ class Action:
     def __init__(
         self,
         msg: str = "",
-        componentKey: str = "",
-        pvSuffix: str = "",
+        component_key: str = "",
+        pv_suffix: str = "",
         value: str = "",
-        preDelay=0,
-        postDelay=1,
+        pre_delay=0,
+        post_delay=1,
     ):
         self.msg = msg
-        self.componentKey = componentKey
-        self.pvSuffix = pvSuffix
+        self.component_key = component_key
+        self.pv_suffix = pv_suffix
         self.value = value
-        self.preDelay = preDelay
-        self.postDelay = postDelay
+        self.pre_delay = pre_delay
+        self.post_delay = post_delay
 
 
 class Condition:
@@ -65,9 +64,9 @@ class Condition:
     Args:
         msg(str): Message to be printed to the console when the sequencer is waiting for
             this condition
-        componentKey(str): One of the following strings to allow instance of feComponent
+        component_key(str): One of the following strings to allow instance of feComponent
             to be located:['ABSB','FV','SHTR','V2']
-        pvSuffix(str): One of the following strings used to determine the exact readback
+        pv_suffix(str): One of the following strings used to determine the exact readback
         PV: ['CON','STA','ILKSTA']
         value(List): Required value of the PV to satisfy condition
     """
@@ -75,23 +74,23 @@ class Condition:
     def __init__(
         self,
         msg: str = "",
-        componentKey: str = "",
-        pvSuffix: str = "",
+        component_key: str = "",
+        pv_suffix: str = "",
         value: List = list(),
-        preDelay=0,
-        postDelay=0,
+        pre_delay=0,
+        post_delay=0,
     ):
         self.msg = msg
-        self.componentKey = componentKey
-        self.pvSuffix = pvSuffix
+        self.component_key = component_key
+        self.pv_suffix = pv_suffix
         self.value = value
-        self.preDelay = preDelay
-        self.postDelay = postDelay
+        self.pre_delay = pre_delay
+        self.post_delay = post_delay
 
         if len(value) != 0:
-            self.hasValue = True
+            self.has_value = True
         else:
-            self.hasValue = False
+            self.has_value = False
 
 
 # Class prototype
@@ -101,56 +100,56 @@ class FESequencer:
 
 class Status:
     def __init__(
-        self, sequencer: FESequencer, frontEnd: str, cagetPtr: types.FunctionType
+        self, sequencer: FESequencer, front_end: str, caget_ptr: types.FunctionType
     ):
         self.sequencer = sequencer
-        self.frontEnd = frontEnd
-        self.stepNumber = 0
+        self.front_end = front_end
+        self.step_number = 0
         self.sequence = Sequences.Idle
         self.action: Action = Action()
         self.condition: Condition = Condition()
-        self.lastConditionMsg = ""
+        self.last_condition_msg = ""
         self.actioned = False
-        self.caget = cagetPtr
+        self.caget = caget_ptr
 
         # Create PVs for sequencer EPICS interface
-        builder.SetDeviceName(f"{frontEnd}-CS-SEQ-01")
+        builder.SetDeviceName(f"{front_end}-CS-SEQ-01")
 
         self.versionPV = builder.stringOut(
             "VERSION", DESC="Git version", initial_value=dls_feSequencer.__version__
         )
-        self.stepNumberPV = builder.aOut(
+        self.step_numberPV = builder.aOut(
             "STEP", DESC="Current step number", initial_value=0
         )
-        self.sequencePV = builder.stringOut(
+        self.sequence_pv = builder.stringOut(
             "SEQUENCE", DESC="Name of running sequence", initial_value=Sequences.Idle.name
         )
-        self.actionPV = builder.stringOut(
+        self.action_pv = builder.stringOut(
             "ACTION_PV", DESC="Sequencer target PV name", initial_value="None"
         )
-        self.actionValPV = builder.stringOut(
+        self.action_val_pv = builder.stringOut(
             "ACTION_VAL", DESC="Value to be written to target", initial_value="None"
         )
-        self.actionMsg = builder.stringOut(
+        self.action_msg = builder.stringOut(
             "ACTION_MSG", DESC="Current step description", initial_value="None"
         )
-        self.conditionPV = builder.stringOut(
+        self.condition_pv = builder.stringOut(
             "CONDITION_PV", DESC="Sequencer readback PV name", initial_value="None"
         )
-        self.conditionDesValPV = builder.stringOut(
+        self.condition_des_val_pv = builder.stringOut(
             "CONDITION_VAL", DESC="Desired value for readback", initial_value="None"
         )
-        self.conditionActValPV = builder.stringOut(
+        self.condition_act_val_pv = builder.stringOut(
             "CONDITION_ACT_VAL", DESC="Actual value of readback PV", initial_value="None"
         )
-        self.conditionMsg = builder.stringOut(
+        self.condition_msg = builder.stringOut(
             "CONDITION_MSG", DESC="Condition before seq progression", initial_value="None"
         )
 
-        cothread.Spawn(self.__updatePVs)
+        cothread.Spawn(self.__update_pvs)
 
-    def incStep(self):
-        self.stepNumber += 1
+    def inc_step(self):
+        self.step_number += 1
 
         # If this method is called when the action hasn't been actioned
         # it means the condition was met before the action. Therefore the
@@ -160,47 +159,47 @@ class Status:
 
         self.actioned = False
 
-    def __updatePVs(self):
+    def __update_pvs(self):
         """Method to be run on a cothread to update locally generated PVs with sequencer
         information"""
         while 1:
             # Always update these PVs
-            self.stepNumberPV.set(self.stepNumber)
-            self.sequencePV.set(self.sequence.name)
+            self.step_numberPV.set(self.step_number)
+            self.sequence_pv.set(self.sequence.name)
 
             # If no sequence is running set all PVs to None to avoid outdated
             # information
             if self.sequence == Sequences.Idle or self.sequence == Sequences.Abort:
-                self.actionPV.set("None")
-                self.actionValPV.set("None")
-                self.actionMsg.set("None")
-                self.conditionPV.set("None")
-                self.conditionDesValPV.set("None")
-                self.conditionActValPV.set("None")
-                self.conditionMsg.set("None")
+                self.action_pv.set("None")
+                self.action_val_pv.set("None")
+                self.action_msg.set("None")
+                self.condition_pv.set("None")
+                self.condition_des_val_pv.set("None")
+                self.condition_act_val_pv.set("None")
+                self.condition_msg.set("None")
             else:
 
                 # Update step related PVs only if self.condition and self.action have
                 # been initialised
                 if type(self.condition) == Condition and type(self.action) == Action:
 
-                    # Check action has been initialised with valid componentKey
-                    if self.action.componentKey in self.sequencer.feComponents.keys():
-                        self.actionPV.set(
-                            self.sequencer.feComponents[self.action.componentKey]
+                    # Check action has been initialised with valid component_key
+                    if self.action.component_key in self.sequencer.fe_components.keys():
+                        self.action_pv.set(
+                            self.sequencer.fe_components[self.action.component_key]
                             + ":"
-                            + self.action.pvSuffix
+                            + self.action.pv_suffix
                         )
-                        self.actionValPV.set(self.action.value)
-                        self.actionMsg.set(self.action.msg)
+                        self.action_val_pv.set(self.action.value)
+                        self.action_msg.set(self.action.msg)
 
-                    if self.condition.componentKey in self.sequencer.feComponents.keys():
-                        self.conditionPV.set(
-                            self.sequencer.feComponents[self.condition.componentKey]
+                    if self.condition.component_key in self.sequencer.fe_components.keys():
+                        self.condition_pv.set(
+                            self.sequencer.fe_components[self.condition.component_key]
                             + ":"
-                            + self.condition.pvSuffix
+                            + self.condition.pv_suffix
                         )
-                        self.conditionMsg.set(self.condition.msg)
+                        self.condition_msg.set(self.condition.msg)
 
                     # If there are multiple acceptable condition values relfect this in
                     # a string and update the PV
@@ -208,19 +207,19 @@ class Status:
                         all_conditions = ""
                         for val in self.condition.value:
                             all_conditions += f"{val} or "
-                        self.conditionDesValPV.set(
+                        self.condition_des_val_pv.set(
                             all_conditions[: all_conditions.rfind("or")]
                         )
                     else:
-                        self.conditionDesValPV.set(self.condition.value)
+                        self.condition_des_val_pv.set(self.condition.value)
 
                     # Get the actual value of the readback PV for easy comparison to the
                     # desired value
-                    conditionPVName = self.conditionPV.get()
-                    if len(conditionPVName) > 10:
+                    condition_pv_name = self.condition_pv.get()
+                    if len(condition_pv_name) > 10:
                         try:
-                            conditionActual = self.caget(conditionPVName, datatype=str)
-                            self.conditionActValPV.set(conditionActual)
+                            condition_actual = self.caget(condition_pv_name, datatype=str)
+                            self.condition_act_val_pv.set(condition_actual)
                         except Exception as e:
                             logging.error(f"\033[1;31m {e} \033[0;0m")
 
@@ -231,7 +230,7 @@ class FESequencer:
     """Main class to instantiate the front end sequencer
 
     Args:
-        frontEnd(str): Prefix of all PVs, the part of the PV that describes the front
+        front_end(str): Prefix of all PVs, the part of the PV that describes the front
             end, eg "FE16B"
         noOfAbsorber(int): Number of absorbers on the front end
         test(bool): Is it a method being executed by pytest?
@@ -239,52 +238,52 @@ class FESequencer:
 
     def __init__(
         self,
-        frontEnd: str,
-        noOfAbsorbers: int,
+        front_end: str,
+        no_of_absorbers: int,
         test: bool = False,
-        caputPtr: types.FunctionType = caput,
-        cagetPtr: types.FunctionType = caget,
-        camonitorPtr: types.FunctionType = camonitor,
+        caput_ptr: types.FunctionType = caput,
+        caget_ptr: types.FunctionType = caget,
+        camonitor_ptr: types.FunctionType = camonitor,
     ):
-        self.noOfAbsorbers = noOfAbsorbers
-        self.beamlineControlPV = f"{frontEnd}-CS-BEAM-01:BLCON"
-        self.pathStatusPV = f"{frontEnd}-CS-BEAM-01:STA"
-        self.caput = caputPtr
-        self.caget = cagetPtr
-        self.camonitor = camonitorPtr
+        self.no_of_absorbers = no_of_absorbers
+        self.beamline_control_pv = f"{front_end}-CS-BEAM-01:BLCON"
+        self.path_status_pv = f"{front_end}-CS-BEAM-01:STA"
+        self.caput = caput_ptr
+        self.caget = caget_ptr
+        self.camonitor = camonitor_ptr
 
         # feComponent objects
-        self.feComponents = dict()
+        self.fe_components = dict()
 
-        if noOfAbsorbers == 2:
-            self.feComponents["ABSB1"] = f"{frontEnd}-RS-ABSB-01"
-            self.feComponents["ABSB"] = f"{frontEnd}-RS-ABSB-{noOfAbsorbers:02d}"
+        if no_of_absorbers == 2:
+            self.fe_components["ABSB1"] = f"{front_end}-RS-ABSB-01"
+            self.fe_components["ABSB"] = f"{front_end}-RS-ABSB-{no_of_absorbers:02d}"
         else:
-            self.feComponents["ABSB"] = f"{frontEnd}-RS-ABSB-01"
+            self.fe_components["ABSB"] = f"{front_end}-RS-ABSB-01"
 
-        self.feComponents["FV"] = f"{frontEnd}-VA-FVALV-01"
-        self.feComponents["PSHTR"] = f"{frontEnd}-PS-SHTR-01"
-        self.feComponents["SHTR"] = f"{frontEnd}-PS-SHTR-02"
-        self.feComponents["V1"] = f"{frontEnd}-VA-VALVE-01"
-        self.feComponents["V2"] = f"{frontEnd}-VA-VALVE-02"
-        self.feComponents["BEAM"] = f"{frontEnd}-CS-BEAM-01"
+        self.fe_components["FV"] = f"{front_end}-VA-FVALV-01"
+        self.fe_components["PSHTR"] = f"{front_end}-PS-SHTR-01"
+        self.fe_components["SHTR"] = f"{front_end}-PS-SHTR-02"
+        self.fe_components["V1"] = f"{front_end}-VA-VALVE-01"
+        self.fe_components["V2"] = f"{front_end}-VA-VALVE-02"
+        self.fe_components["BEAM"] = f"{front_end}-CS-BEAM-01"
 
-        self.closeSequenceActions: List[Action] = list()
-        self.closeSequenceConditions: List[Condition] = list()
-        self.openSequenceActions: List[Action] = list()
-        self.openSequenceConditions: List[Condition] = list()
+        self.close_sequence_actions: List[Action] = list()
+        self.close_sequence_conditions: List[Condition] = list()
+        self.open_sequence_actions: List[Action] = list()
+        self.open_sequence_conditions: List[Condition] = list()
 
         # Create status object
-        self.status = Status(self, frontEnd, self.caget)
+        self.status = Status(self, front_end, self.caget)
 
         if not test:
             # Set BLCON to "Unknown" on boot
-            self.caput(f"{frontEnd}-CS-BEAM-01:BLCON", 3)
+            self.caput(f"{front_end}-CS-BEAM-01:BLCON", 3)
 
             # Remove input field from beam status to allow writing
             # This will be missing with the test IOC
             try:
-                self.caput(f"{frontEnd}-CS-BEAM-01:STA.INP", "")
+                self.caput(f"{front_end}-CS-BEAM-01:STA.INP", "")
             except Exception as e:
                 logging.error(f"\033[1;31m {e} \033[0;0m")
 
@@ -292,26 +291,26 @@ class FESequencer:
             try:
                 if (
                     self.caget(
-                        f"{frontEnd}-RS-ABSB-{noOfAbsorbers:02d}:STA", datatype=str
+                        f"{front_end}-RS-ABSB-{no_of_absorbers:02d}:STA", datatype=str
                     )
                     == "Open"
                 ):
-                    self.caput(self.feComponents["BEAM"] + ":STA", "Open")
+                    self.caput(self.fe_components["BEAM"] + ":STA", "Open")
                 if (
                     self.caget(
-                        f"{frontEnd}-RS-ABSB-{noOfAbsorbers:02d}:STA", datatype=str
+                        f"{front_end}-RS-ABSB-{no_of_absorbers:02d}:STA", datatype=str
                     )
                     == "Closed"
                 ):
-                    self.caput(self.feComponents["BEAM"] + ":STA", "Closed")
+                    self.caput(self.fe_components["BEAM"] + ":STA", "Closed")
             except Exception as e:
                 logging.error(f"\033[1;31m {e} \033[0;0m")
 
             # Set monitor for beamline control
             try:
                 self.camonitor(
-                    f"{frontEnd}-CS-BEAM-01:BLCON",
-                    self.__processBeamlineCommand,
+                    f"{front_end}-CS-BEAM-01:BLCON",
+                    self.__process_beamline_command,
                     datatype=str,
                 )
             except Exception as e:
@@ -319,18 +318,18 @@ class FESequencer:
 
             # Set monitor for the absorbers to update beam status
             # in the event that one is closed manually (not via sequencer)
-            for component in self.feComponents:
+            for component in self.fe_components:
                 if "ABSB" in component or "SHTR" in component:
                     try:
                         self.camonitor(
-                            f"{self.feComponents[component]}:STA",
-                            self.__processAbsorberStateChange,
+                            f"{self.fe_components[component]}:STA",
+                            self.__process_absorber_state_change,
                             datatype=str,
                         )
                     except Exception as e:
                         logging.error(f"\033[1;31m {e} \033[0;0m")
 
-    def configureCloseSequence(self, actions, conditions):
+    def configure_close_sequence(self, actions, conditions):
         """Method to describe the seqence of actions and conditions for the closing sequence
 
         Args:
@@ -342,10 +341,10 @@ class FESequencer:
         for condition in conditions:
             assert type(condition.value) is list
 
-        self.closeSequenceActions = actions
-        self.closeSequenceConditions = conditions
+        self.close_sequence_actions = actions
+        self.close_sequence_conditions = conditions
 
-    def configureOpenSequence(self, actions: List[Action], conditions: List[Condition]):
+    def configure_open_sequence(self, actions: List[Action], conditions: List[Condition]):
         """Method to describe the seqence of actions and conditions for the opening sequence
 
         Args:
@@ -357,23 +356,23 @@ class FESequencer:
         for condition in conditions:
             assert type(condition.value) is list
 
-        self.openSequenceActions = actions
-        self.openSequenceConditions = conditions
+        self.open_sequence_actions = actions
+        self.open_sequence_conditions = conditions
 
-    def __processBeamlineCommand(self, val):
+    def __process_beamline_command(self, val):
         """Method called by BLCON camonitor. This method starts one of the sequences.
 
         args:
             var(str): Value of BLCON from camonitor
         """
         if val == "Open":
-            self.__requestSequenceStart(Sequences.Open)
+            self.__request_sequence_start(Sequences.Open)
         if val == "Close":
-            self.__requestSequenceStart(Sequences.Close)
+            self.__request_sequence_start(Sequences.Close)
         if val == "Abort":
-            self.__requestSequenceStart(Sequences.Abort)
+            self.__request_sequence_start(Sequences.Abort)
 
-    def __processAbsorberStateChange(self, val):
+    def __process_absorber_state_change(self, val):
         """Method called by ABSB, PSHTR and SHTR camonitor.
 
         This should capture any absorber state changes that happen when a sequence is not being
@@ -386,36 +385,36 @@ class FESequencer:
         """
 
         if self.status.sequence == Sequences.Idle:
-            currentBeamSta = self.caget(f'{self.feComponents["BEAM"]}:STA', datatype=str)
-            currentBeamCon = self.caget(
-                f'{self.feComponents["BEAM"]}:BLCON', datatype=str
+            current_beam_sta = self.caget(f'{self.fe_components["BEAM"]}:STA', datatype=str)
+            current_beam_con = self.caget(
+                f'{self.fe_components["BEAM"]}:BLCON', datatype=str
             )
-            newBeamSta = currentBeamSta
-            absb = self.caget(f'{self.feComponents["ABSB"]}:STA', datatype=str)
+            new_beam_sta = current_beam_sta
+            absb = self.caget(f'{self.fe_components["ABSB"]}:STA', datatype=str)
             absb1 = absb
-            pshtr = self.caget(f'{self.feComponents["PSHTR"]}:STA', datatype=str)
-            shtr = self.caget(f'{self.feComponents["SHTR"]}:STA', datatype=str)
+            pshtr = self.caget(f'{self.fe_components["PSHTR"]}:STA', datatype=str)
+            shtr = self.caget(f'{self.fe_components["SHTR"]}:STA', datatype=str)
 
-            if self.noOfAbsorbers == 2:
-                absb1 = self.caget(f'{self.feComponents["ABSB1"]}:STA', datatype=str)
+            if self.no_of_absorbers == 2:
+                absb1 = self.caget(f'{self.fe_components["ABSB1"]}:STA', datatype=str)
 
             if absb == "Open" and absb1 == "Open" and pshtr == "Open" and shtr == "Open":
-                newBeamSta = "Open"
+                new_beam_sta = "Open"
 
             if pshtr == "Closed" or shtr == "Closed":
-                newBeamSta = "Closed"
+                new_beam_sta = "Closed"
 
-            if currentBeamSta != newBeamSta:
-                self.caput(f'{self.feComponents["BEAM"]}:STA', newBeamSta)
-                currentBeamSta = newBeamSta
+            if current_beam_sta != new_beam_sta:
+                self.caput(f'{self.fe_components["BEAM"]}:STA', new_beam_sta)
+                current_beam_sta = new_beam_sta
 
             # If BLCON no longer matches BEAM:STA then set BLCON to "Unknown"
             # This ensures that when the beamline request a sequence that the BLCON
             # record will process.
-            if currentBeamCon != currentBeamSta:
-                self.caput(f'{self.feComponents["BEAM"]}:BLCON', "Unknown")
+            if current_beam_con != current_beam_sta:
+                self.caput(f'{self.fe_components["BEAM"]}:BLCON', "Unknown")
 
-    def __requestSequenceStart(self, command):
+    def __request_sequence_start(self, command):
         """Method that sets the current sequence to a specified value to start a sequence
 
         args:
@@ -426,15 +425,15 @@ class FESequencer:
         # If Abort command received AND sequencer is running, reset and flag Fault
         if command == Sequences.Abort and self.status.sequence != Sequences.Idle:
             self.status.sequence = Sequences.Idle
-            self.__resetSequencer()
-            self.caput(f"{self.feComponents['BEAM']}:STA", "Fault")
+            self.__reset_sequencer()
+            self.caput(f"{self.fe_components['BEAM']}:STA", "Fault")
 
         elif command != Sequences.Abort and self.status.sequence == Sequences.Idle:
             self.status.sequence = command
 
         # I new sequence is commanded, reset the sequencer and start the newly requested one.
         elif command != Sequences.Abort and self.status.sequence != Sequences.Idle:
-            self.__resetSequencer()
+            self.__reset_sequencer()
             self.status.sequence = command
 
     def run(self):
@@ -442,25 +441,25 @@ class FESequencer:
         cothread.Spawn(self.__run)
 
     def __run(self):
-        """Calls self.__runSequence when a sequence is requested"""
+        """Calls self.__run_sequence when a sequence is requested"""
         while 1:
             if self.status.sequence == Sequences.Open:
-                self.__runSequence(self.openSequenceActions, self.openSequenceConditions)
+                self.__run_sequence(self.open_sequence_actions, self.open_sequence_conditions)
 
             if self.status.sequence == Sequences.Close:
-                self.__runSequence(
-                    self.closeSequenceActions, self.closeSequenceConditions
+                self.__run_sequence(
+                    self.close_sequence_actions, self.close_sequence_conditions
                 )
 
             cothread.Sleep(0.5)
 
-    def __resetSequencer(self):
+    def __reset_sequencer(self):
         """Reset sequencer"""
-        self.status.stepNumber = 0
+        self.status.step_number = 0
         self.status.actioned = False
 
-    def __runSequence(self, actions, conditions):
-        """Method to act on current sequence step given by self.status.stepNumber
+    def __run_sequence(self, actions, conditions):
+        """Method to act on current sequence step given by self.status.step_number
 
         This method has no state and has no while loops. When called with its set of
         actions and conditions it should
@@ -474,42 +473,42 @@ class FESequencer:
             conditions(list): List of Condition objects describing the current sequence
         """
 
-        if self.status.stepNumber == len(actions):
+        if self.status.step_number == len(actions):
             print(f"{self.status.sequence.name} sequence complete")
             self.status.sequence = Sequences.Idle
-            self.__resetSequencer()
+            self.__reset_sequencer()
             return
 
         # Ensure the status object has the current Action and Condition
-        self.status.action = actions[self.status.stepNumber]
-        self.status.condition = conditions[self.status.stepNumber]
+        self.status.action = actions[self.status.step_number]
+        self.status.condition = conditions[self.status.step_number]
 
         # Check if value of readback PV is what is required for the next step
         # If the condition has no value then skip as no condition is required
-        if self.status.condition.hasValue:
-            readbackPV = f"""{self.feComponents[self.status.condition.componentKey]}:{self.status.condition.pvSuffix}"""
+        if self.status.condition.has_value:
+            readback_pv = f"""{self.fe_components[self.status.condition.component_key]}:{self.status.condition.pv_suffix}"""
 
             # Prevent continuous console logging whilst waiting for a condition
-            if self.status.lastConditionMsg != self.status.condition.msg:
+            if self.status.last_condition_msg != self.status.condition.msg:
                 print(
                     f"CONDITION:\t{self.status.condition.msg}\033[1;33m In Progress \033[0;0m"
                 )
-                self.status.lastConditionMsg = self.status.condition.msg
+                self.status.last_condition_msg = self.status.condition.msg
 
             # Don't bother with the pre-delay if the action hasn't been actioned
             if self.status.actioned:
-                sleep(self.status.condition.preDelay)
+                sleep(self.status.condition.pre_delay)
 
             # Check if the condition PV value == one of the desired values, if it is
             # move to the next step
-            actualConditionValue = self.caget(readbackPV, datatype=str)
+            actual_condition_value = self.caget(readback_pv, datatype=str)
             for val in self.status.condition.value:
-                if actualConditionValue == val:
+                if actual_condition_value == val:
                     print(
                         f"CONDITION:\t{self.status.condition.msg}\033[1;32m Completed \033[0;0m"
                     )
-                    sleep(self.status.condition.postDelay)
-                    self.status.incStep()
+                    sleep(self.status.condition.post_delay)
+                    self.status.inc_step()
                     return
 
         # Determine if an action needs to be performed
@@ -517,14 +516,14 @@ class FESequencer:
             # Do Action:
             if len(self.status.action.msg) > 1:
                 print(f"ACTION:\t\t{self.status.action.msg}")
-            sleep(self.status.action.preDelay)
+            sleep(self.status.action.pre_delay)
             self.caput(
-                f"""{self.feComponents[self.status.action.componentKey]}:{self.status.action.pvSuffix}""",
+                f"""{self.fe_components[self.status.action.component_key]}:{self.status.action.pv_suffix}""",
                 self.status.action.value,
             )
             cothread.Yield()
-            sleep(self.status.action.postDelay)
+            sleep(self.status.action.post_delay)
             self.status.actioned = True
 
-            if not self.status.condition.hasValue:
-                self.status.incStep()
+            if not self.status.condition.has_value:
+                self.status.inc_step()
