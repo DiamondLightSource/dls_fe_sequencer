@@ -11,6 +11,8 @@ import cothread
 from cothread.catools import caget, camonitor, caput
 from softioc import builder
 
+import dls_fe_sequencer
+
 __all__ = [
     "Action",
     "Condition",
@@ -110,9 +112,9 @@ class Status:
         # Create PVs for sequencer EPICS interface
         builder.SetDeviceName(f"{front_end}-CS-SEQ-01")
 
-        # self.versionPV = builder.stringOut(
-        #     "VERSION", DESC="Git version", initial_value=dls_fe_sequencer.__version__
-        # )
+        self.versionPV = builder.stringOut(
+            "VERSION", DESC="Git version", initial_value=dls_fe_sequencer.__version__
+        )
         self.step_numberPV = builder.aOut(
             "STEP", DESC="Current step number", initial_value=0
         )
