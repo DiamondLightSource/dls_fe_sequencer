@@ -32,7 +32,8 @@ class Action:
     Args:
         msg(str): Message to be printed to the console to describe the action to be
             performed
-        component_key(str): One of the following strings to allow instance of feComponent
+        component_key(str): One of the following strings to allow instance of
+        feComponent
             to be located:['ABSB','FV','SHTR','V2']
         pv_suffix(str): One of the following strings used to determine the exact
         PV: ['CON','STA','ILKSTA']
@@ -63,10 +64,10 @@ class Condition:
     Args:
         msg(str): Message to be printed to the console when the sequencer is waiting for
             this condition
-        component_key(str): One of the following strings to allow instance of feComponent
-            to be located:['ABSB','FV','SHTR','V2']
-        pv_suffix(str): One of the following strings used to determine the exact readback
-        PV: ['CON','STA','ILKSTA']
+        component_key(str): One of the following strings to allow instance of
+        feComponent to be located:['ABSB','FV','SHTR','V2']
+        pv_suffix(str): One of the following strings used to determine the exact
+        readback PV: ['CON','STA','ILKSTA']
         value(List): Required value of the PV to satisfy condition
     """
 
@@ -169,7 +170,7 @@ class Status:
 
             # If no sequence is running set all PVs to None to avoid outdated
             # information
-            if self.sequence == Sequences.Idle or self.sequence == Sequences.Abort:
+            if self.sequence is Sequences.Idle or self.sequence is Sequences.Abort:
                 self.action_pv.set("None")
                 self.action_val_pv.set("None")
                 self.action_msg.set("None")
@@ -180,7 +181,7 @@ class Status:
             else:
                 # Update step related PVs only if self.condition and self.action have
                 # been initialised
-                if type(self.condition) == Condition and type(self.action) == Action:
+                if type(self.condition) is Condition and type(self.action) is Action:
                     # Check action has been initialised with valid component_key
                     if self.action.component_key in self.sequencer.fe_components.keys():
                         self.action_pv.set(
@@ -204,7 +205,7 @@ class Status:
 
                     # If there are multiple acceptable condition values relfect this in
                     # a string and update the PV
-                    if type(self.condition.value) == list:
+                    if type(self.condition.value) is list:
                         all_conditions = ""
                         for val in self.condition.value:
                             all_conditions += f"{val} or "
@@ -256,7 +257,7 @@ class FESequencer:
         self.camonitor = camonitor_ptr
 
         # feComponent objects
-        self.fe_components = dict()
+        self.fe_components = {}
 
         if no_of_absorbers == 2:
             self.fe_components["ABSB1"] = f"{front_end}-RS-ABSB-01"
@@ -271,10 +272,10 @@ class FESequencer:
         self.fe_components["V2"] = f"{front_end}-VA-VALVE-02"
         self.fe_components["BEAM"] = f"{front_end}-CS-BEAM-01"
 
-        self.close_sequence_actions: List[Action] = list()
-        self.close_sequence_conditions: List[Condition] = list()
-        self.open_sequence_actions: List[Action] = list()
-        self.open_sequence_conditions: List[Condition] = list()
+        self.close_sequence_actions: list[Action] = []
+        self.close_sequence_conditions: list[Condition] = []
+        self.open_sequence_actions: list[Action] = []
+        self.open_sequence_conditions: list[Condition] = []
 
         # Create status object
         self.status = Status(self, front_end, self.caget)
@@ -333,7 +334,8 @@ class FESequencer:
                         logging.error(f"\033[1;31m {e} \033[0;0m")
 
     def configure_close_sequence(self, actions, conditions):
-        """Method to describe the seqence of actions and conditions for the closing sequence
+        """Method to describe the seqence of actions and conditions for the closing
+        sequence
 
         Args:
             actions(list[Action]): List of actions
@@ -348,9 +350,10 @@ class FESequencer:
         self.close_sequence_conditions = conditions
 
     def configure_open_sequence(
-        self, actions: List[Action], conditions: List[Condition]
+        self, actions: list[Action], conditions: list[Condition]
     ):
-        """Method to describe the seqence of actions and conditions for the opening sequence
+        """Method to describe the seqence of actions and conditions for the opening
+        sequence
 
         Args:
             actions(list[Action]): List of actions
@@ -380,9 +383,10 @@ class FESequencer:
     def __process_absorber_state_change(self, val):
         """Method called by ABSB, PSHTR and SHTR camonitor.
 
-        This should capture any absorber state changes that happen when a sequence is not being
-        executed and reflect them in BEAM-01:STA. It also sets BLCON to "Unknown" to allow the
-        BLCON record to process whenever the beamline request another sequence.
+        This should capture any absorber state changes that happen when a sequence is
+        not being executed and reflect them in BEAM-01:STA. It also sets BLCON to
+        "Unknown" to allow the BLCON record to process whenever the beamline request
+        another sequence.
 
         Args:
             val(str): Value of ABSB-XX:STA from camonitor (not actually used)
@@ -427,7 +431,8 @@ class FESequencer:
                 self.caput(f"{self.fe_components['BEAM']}:BLCON", "Unknown")
 
     def __request_sequence_start(self, command):
-        """Method that sets the current sequence to a specified value to start a sequence
+        """Method that sets the current sequence to a specified value to start a
+        sequence
 
         args:
             command(Sequences): The sequence or command to act on
@@ -443,7 +448,8 @@ class FESequencer:
         elif command != Sequences.Abort and self.status.sequence == Sequences.Idle:
             self.status.sequence = command
 
-        # I new sequence is commanded, reset the sequencer and start the newly requested one.
+        # I new sequence is commanded, reset the sequencer and start the newly requested
+        # one.
         elif command != Sequences.Abort and self.status.sequence != Sequences.Idle:
             self.__reset_sequencer()
             self.status.sequence = command
@@ -500,12 +506,14 @@ class FESequencer:
         # Check if value of readback PV is what is required for the next step
         # If the condition has no value then skip as no condition is required
         if self.status.condition.has_value:
-            readback_pv = f"""{self.fe_components[self.status.condition.component_key]}:{self.status.condition.pv_suffix}"""
+            component_pv = self.fe_components[self.status.condition.component_key]
+            readback_pv = f"{component_pv}:{self.status.condition.pv_suffix}"
 
             # Prevent continuous console logging whilst waiting for a condition
             if self.status.last_condition_msg != self.status.condition.msg:
                 print(
-                    f"CONDITION:\t{self.status.condition.msg}\033[1;33m In Progress \033[0;0m"
+                    f"CONDITION:\t{self.status.condition.msg}"
+                    f"\033[1;33m In Progress \033[0;0m"
                 )
                 self.status.last_condition_msg = self.status.condition.msg
 
@@ -519,7 +527,8 @@ class FESequencer:
             for val in self.status.condition.value:
                 if actual_condition_value == val:
                     print(
-                        f"CONDITION:\t{self.status.condition.msg}\033[1;32m Completed \033[0;0m"
+                        f"CONDITION:\t{self.status.condition.msg}"
+                        f"\033[1;32m Completed \033[0;0m"
                     )
                     sleep(self.status.condition.post_delay)
                     self.status.inc_step()
