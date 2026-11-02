@@ -10,6 +10,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 description = "A module to automate the control of Diamond Front Ends"
 dependencies = [
@@ -23,7 +24,6 @@ requires-python = ">=3.11"
 
 [dependency-groups]
 dev = [
-    "copier",
     "pre-commit",
     "pyright",
     "pytest",
@@ -42,6 +42,10 @@ GitHub = "https://github.com/DiamondLightSource/dls-fe-sequencer"
 [[project.authors]] # Further authors may be added by duplicating this section
 email = "lee.hudson@diamond.ac.uk"
 name = "Lee Hudson"
+
+[tool.uv]
+# Minimum uv to fix eMudhra CA cert incident (see discuss.python.org/t/109576)
+required-version = ">=0.13.5"
 
 [tool.setuptools_scm]
 version_file = "src/dls_fe_sequencer/_version.py"
