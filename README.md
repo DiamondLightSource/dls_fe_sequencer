@@ -10,8 +10,9 @@ A module to automate the control of Diamond Front Ends
 This is where you should write a short paragraph that describes what your module does,
 how it does it, and why people should use it.
 
-Source          | <https://github.com/DiamondLightSource/dls-fe-sequencer>
+What            | Where
 :---:           | :---:
+Source          | <https://github.com/DiamondLightSource/dls-fe-sequencer>
 PyPI            | `pip install dls-fe-sequencer`
 Releases        | <https://github.com/DiamondLightSource/dls-fe-sequencer/releases>
 
